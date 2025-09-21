@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Button, Container, Card, Spinner, Alert, Form, InputGroup, Table } from 'react-bootstrap';
+import { Row, Col, Button, Container, Card, Spinner, Alert, Form, InputGroup, Table, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { baseUrl } from '../baseUrl';
 import axios from 'axios';
@@ -22,6 +22,33 @@ function Cashier() {
   const [pageRight, setPageRight] = useState(1);
   const [cash, setCash] = useState(0);
   const [mpesa, setMpesa] = useState(0);
+
+  // Format date and time
+  const formatDateTime = (date) => {
+    return date.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  };
+
+  // Create tooltip content for order details
+  const renderOrderTooltip = (orderDetails) => (
+    <Tooltip id="order-tooltip" style={{ fontSize: '12px' }}>
+      <div style={{ textAlign: 'left', maxWidth: '200px' }}>
+        <strong>Order Details:</strong>
+        {orderDetails.map((item, index) => (
+          <div key={index} style={{ marginTop: '4px', borderBottom: '1px solid #ddd', paddingBottom: '2px' }}>
+            <div><strong>{item.menu_name}</strong></div>
+            <div>Qty: {item.quantity} × KSh {item.price} = KSh {item.total}</div>
+          </div>
+        ))}
+      </div>
+    </Tooltip>
+  );
 
   // Fetch sales orders on mount
   useEffect(() => {
@@ -189,24 +216,33 @@ function Cashier() {
                       <th>Receipt #</th>
                       <th>Amount</th>
                       <th>Waiter</th>
+                      <th>Date & Time</th>
                       <th className="text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading && salesOrders.length === 0 ? (
-                      <tr><td colSpan={4} className="text-center py-4"><Spinner animation="border" size="sm" /> Loading receipts...</td></tr>
+                      <tr><td colSpan={5} className="text-center py-4"><Spinner animation="border" size="sm" /> Loading receipts...</td></tr>
                     ) : filteredSalesOrders.length === 0 ? (
-                      <tr><td colSpan={4} className="text-center py-3 text-muted">{searchTerm ? 'No matching receipts found' : 'No receipts available'}</td></tr>
+                      <tr><td colSpan={5} className="text-center py-3 text-muted">{searchTerm ? 'No matching receipts found' : 'No receipts available'}</td></tr>
                     ) : (
                       paginate(filteredSalesOrders, pageLeft, leftItemsPerPage).map(item => (
-                        <tr key={item.billNo}>
-                          <td>{item.billNo}</td>
-                          <td>KSh {item.amount.toFixed(2)}</td>
-                          <td>{item.customer}</td>
-                          <td className="text-center">
-                            <Button variant="success" size="sm" onClick={() => addItem(item)} disabled={selectedItems.some(si => si.billNo === item.billNo)}>+</Button>
-                          </td>
-                        </tr>
+                        <OverlayTrigger
+                          key={item.billNo}
+                          placement="top"
+                          delay={{ show: 250, hide: 400 }}
+                          overlay={renderOrderTooltip(item.orderDetails)}
+                        >
+                          <tr style={{ cursor: 'pointer' }}>
+                            <td>{item.billNo}</td>
+                            <td>KSh {item.amount.toFixed(2)}</td>
+                            <td>{item.customer}</td>
+                            <td style={{ fontSize: '11px' }}>{formatDateTime(item.date)}</td>
+                            <td className="text-center">
+                              <Button variant="success" size="sm" onClick={() => addItem(item)} disabled={selectedItems.some(si => si.billNo === item.billNo)}>+</Button>
+                            </td>
+                          </tr>
+                        </OverlayTrigger>
                       ))
                     )}
                   </tbody>
